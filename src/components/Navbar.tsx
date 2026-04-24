@@ -1,91 +1,218 @@
-import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, Compass } from 'lucide-react'
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Menu, X, GraduationCap } from "lucide-react";
+import { Text, XStack, YStack } from "tamagui";
 
 const navLinks = [
-  { to: '/', label: 'Home' },
-  { to: '/careers', label: 'Explore Careers' },
-  { to: '/quiz', label: 'Career Quiz' },
-  { to: '/pathways', label: 'Pathways' },
-  { to: '/about', label: 'About' },
-]
+  { to: "/", label: "Home" },
+  { to: "/careers", label: "Explore Careers" },
+  { to: "/quiz", label: "Career Quiz" },
+  { to: "/pathways", label: "Pathways" },
+  { to: "/about", label: "About" },
+];
 
 export default function Navbar() {
-  const [open, setOpen] = useState(false)
-  const { pathname } = useLocation()
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-2 text-primary-700 font-bold text-xl">
-          <Compass className="h-7 w-7" />
-          <span>CareerPathway</span>
+    <YStack
+      position="sticky"
+      top={0}
+      zIndex={50}
+      backgroundColor="rgba(255,255,255,0.8)"
+      borderBottomWidth={1}
+      borderBottomColor="#f3f4f6"
+      style={{ backdropFilter: "blur(12px)" }}
+    >
+      <XStack
+        width="100%"
+        maxWidth={1280}
+        marginHorizontal="auto"
+        alignItems="center"
+        justifyContent="space-between"
+        paddingHorizontal={16}
+        paddingVertical={12}
+      >
+        <Link to="/" style={{ textDecoration: "none" }}>
+          <XStack alignItems="center" gap={8}>
+            <GraduationCap size={28} color="#1d4ed8" />
+            <Text fontSize={20} fontWeight="700" color="#1d4ed8">
+              CareerPathway
+            </Text>
+          </XStack>
         </Link>
 
-        {/* Desktop nav */}
-        <ul className="hidden md:flex items-center gap-1">
-          {navLinks.map(({ to, label }) => (
-            <li key={to}>
-              <Link
-                to={to}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                  ${pathname === to
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-              >
-                {label}
+        <XStack
+          display="none"
+          $gtSm={{ display: "flex" }}
+          alignItems="center"
+          gap={4}
+        >
+          {navLinks.map(({ to, label }) => {
+            const active = pathname === to;
+            return (
+              <Link key={to} to={to} style={{ textDecoration: "none" }}>
+                <YStack
+                  paddingHorizontal={16}
+                  paddingVertical={8}
+                  borderRadius={8}
+                  backgroundColor={active ? "#eff6ff" : "transparent"}
+                  hoverStyle={{
+                    backgroundColor: active ? "#eff6ff" : "#f9fafb",
+                  }}
+                  cursor="pointer"
+                >
+                  <Text
+                    fontSize={14}
+                    fontWeight="500"
+                    color={active ? "#1d4ed8" : "#4b5563"}
+                  >
+                    {label}
+                  </Text>
+                </YStack>
               </Link>
-            </li>
-          ))}
-        </ul>
+            );
+          })}
+        </XStack>
 
-        <Link
-          to="/quiz"
-          className="hidden md:inline-flex rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 transition-colors"
+        <XStack
+          display="none"
+          $gtSm={{ display: "flex" }}
+          alignItems="center"
+          gap={8}
         >
-          Take Free Quiz
-        </Link>
+          <Link to="/login" style={{ textDecoration: "none" }}>
+            <YStack
+              borderRadius={8}
+              paddingHorizontal={16}
+              paddingVertical={10}
+              hoverStyle={{ backgroundColor: "#f3f4f6" }}
+              cursor="pointer"
+            >
+              <Text fontSize={14} fontWeight="600" color="#1d4ed8">
+                Login
+              </Text>
+            </YStack>
+          </Link>
+          <Link to="/signup" style={{ textDecoration: "none" }}>
+            <YStack
+              backgroundColor="#2563eb"
+              hoverStyle={{ backgroundColor: "#1d4ed8" }}
+              pressStyle={{ backgroundColor: "#1e40af" }}
+              borderRadius={8}
+              paddingHorizontal={20}
+              paddingVertical={10}
+              cursor="pointer"
+            >
+              <Text fontSize={14} fontWeight="600" color="white">
+                Sign up
+              </Text>
+            </YStack>
+          </Link>
+        </XStack>
 
-        {/* Mobile toggle */}
-        <button
-          onClick={() => setOpen(!open)}
-          className="md:hidden rounded-lg p-2 text-gray-600 hover:bg-gray-100"
-          aria-label="Toggle menu"
-        >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
-      </nav>
+        <YStack $gtSm={{ display: "none" }}>
+          <YStack
+            onPress={() => setOpen(!open)}
+            padding={8}
+            borderRadius={8}
+            hoverStyle={{ backgroundColor: "#f3f4f6" }}
+            cursor="pointer"
+            aria-label="Toggle menu"
+          >
+            {open ? (
+              <X size={24} color="#4b5563" />
+            ) : (
+              <Menu size={24} color="#4b5563" />
+            )}
+          </YStack>
+        </YStack>
+      </XStack>
 
-      {/* Mobile drawer */}
       {open && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-4 pb-4">
-          <ul className="space-y-1 pt-2">
-            {navLinks.map(({ to, label }) => (
-              <li key={to}>
+        <YStack
+          $gtSm={{ display: "none" }}
+          borderTopWidth={1}
+          borderTopColor="#f3f4f6"
+          backgroundColor="white"
+          paddingHorizontal={16}
+          paddingBottom={16}
+        >
+          <YStack paddingTop={8} gap={4}>
+            {navLinks.map(({ to, label }) => {
+              const active = pathname === to;
+              return (
                 <Link
+                  key={to}
                   to={to}
                   onClick={() => setOpen(false)}
-                  className={`block rounded-lg px-4 py-2.5 text-sm font-medium transition-colors
-                    ${pathname === to
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-600 hover:bg-gray-50'
-                    }`}
+                  style={{ textDecoration: "none" }}
                 >
-                  {label}
+                  <YStack
+                    paddingHorizontal={16}
+                    paddingVertical={10}
+                    borderRadius={8}
+                    backgroundColor={active ? "#eff6ff" : "transparent"}
+                    hoverStyle={{
+                      backgroundColor: active ? "#eff6ff" : "#f9fafb",
+                    }}
+                  >
+                    <Text
+                      fontSize={14}
+                      fontWeight="500"
+                      color={active ? "#1d4ed8" : "#4b5563"}
+                    >
+                      {label}
+                    </Text>
+                  </YStack>
                 </Link>
-              </li>
-            ))}
-          </ul>
-          <Link
-            to="/quiz"
-            onClick={() => setOpen(false)}
-            className="mt-3 block rounded-lg bg-primary-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-primary-700 transition-colors"
-          >
-            Take Free Quiz
-          </Link>
-        </div>
+              );
+            })}
+          </YStack>
+          <YStack gap={8} marginTop={12}>
+            <Link
+              to="/login"
+              onClick={() => setOpen(false)}
+              style={{ textDecoration: "none" }}
+            >
+              <YStack
+                width="100%"
+                borderWidth={1}
+                borderColor="#d1d5db"
+                hoverStyle={{ backgroundColor: "#f9fafb" }}
+                borderRadius={8}
+                paddingVertical={10}
+                alignItems="center"
+                cursor="pointer"
+              >
+                <Text fontSize={14} fontWeight="600" color="#1d4ed8">
+                  Login
+                </Text>
+              </YStack>
+            </Link>
+            <Link
+              to="/signup"
+              onClick={() => setOpen(false)}
+              style={{ textDecoration: "none" }}
+            >
+              <YStack
+                width="100%"
+                backgroundColor="#2563eb"
+                hoverStyle={{ backgroundColor: "#1d4ed8" }}
+                borderRadius={8}
+                paddingVertical={10}
+                alignItems="center"
+                cursor="pointer"
+              >
+                <Text fontSize={14} fontWeight="600" color="white">
+                  Sign up
+                </Text>
+              </YStack>
+            </Link>
+          </YStack>
+        </YStack>
       )}
-    </header>
-  )
+    </YStack>
+  );
 }

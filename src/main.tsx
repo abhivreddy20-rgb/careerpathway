@@ -1,11 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { TamaguiProvider } from 'tamagui'
+import tamaguiConfig from './tamagui.config'
 import './index.css'
 import App from './App'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
+      <App />
+    </TamaguiProvider>
   </StrictMode>,
 )
 
