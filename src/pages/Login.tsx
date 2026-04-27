@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   GraduationCap,
   Mail,
@@ -9,6 +9,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Text, XStack, YStack } from "tamagui";
+import { useAuth } from "../lib/authContext";
+import { supabase } from "../lib/supabase";
 
 type FormState = {
   email: string;
@@ -46,17 +48,33 @@ function validate(values: FormState): FormErrors {
 
 export default function Login() {
   const navigate = useNavigate();
-  const [values, setValues] = useState<FormState>({ email: "", password: "" });
+  const location = useLocation();
+  const { signIn } = useAuth();
+  const navState = location.state as
+    | { justSignedUp?: boolean; email?: string }
+    | null;
+  const [values, setValues] = useState<FormState>({
+    email: navState?.email ?? "",
+    password: "",
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(
+    navState?.justSignedUp
+      ? "Account created. Log in with your new credentials to continue."
+      : null,
+  );
 
   const handleChange =
     (field: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setValues((v) => ({ ...v, [field]: e.target.value }));
       if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+      if (authError) setAuthError(null);
+      if (notice) setNotice(null);
     };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,9 +85,23 @@ export default function Login() {
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    navigate("/onboarding");
+    setAuthError(null);
+    try {
+      await signIn(values.email.trim(), values.password);
+      const { data } = await supabase
+        .from("profiles")
+        .select("current_grade, desired_profession")
+        .maybeSingle();
+      const ready =
+        data?.current_grade && data?.desired_profession ? "/pathway" : "/onboarding";
+      navigate(ready);
+    } catch (err) {
+      setAuthError(
+        err instanceof Error ? err.message : "Could not log in. Try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -103,6 +135,22 @@ export default function Login() {
             Log in to continue your career journey.
           </Text>
         </YStack>
+
+        {notice && (
+          <XStack
+            alignItems="center"
+            gap={6}
+            paddingHorizontal={12}
+            paddingVertical={10}
+            borderRadius={8}
+            backgroundColor="#ecfdf5"
+            marginBottom={16}
+          >
+            <Text fontSize={13} color="#047857">
+              {notice}
+            </Text>
+          </XStack>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <YStack gap={16}>
@@ -180,6 +228,22 @@ export default function Login() {
                 </Text>
               </Link>
             </XStack>
+
+            {authError && (
+              <XStack
+                alignItems="center"
+                gap={6}
+                paddingHorizontal={12}
+                paddingVertical={8}
+                borderRadius={8}
+                backgroundColor="#fef2f2"
+              >
+                <AlertCircle size={14} color="#dc2626" />
+                <Text fontSize={12} color="#dc2626">
+                  {authError}
+                </Text>
+              </XStack>
+            )}
 
             <button
               type="submit"

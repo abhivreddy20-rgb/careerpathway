@@ -4,14 +4,29 @@ import { TamaguiProvider } from 'tamagui'
 import tamaguiConfig from './tamagui.config'
 import './index.css'
 import App from './App'
+import { AuthProvider } from './lib/auth'
+import { isSupabaseConfigured } from './lib/supabase'
+import EnvSetupNotice from './components/EnvSetupNotice'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
-      <App />
-    </TamaguiProvider>
-  </StrictMode>,
-)
+const root = createRoot(document.getElementById('root')!)
+
+if (!isSupabaseConfigured) {
+  root.render(
+    <StrictMode>
+      <EnvSetupNotice />
+    </StrictMode>,
+  )
+} else {
+  root.render(
+    <StrictMode>
+      <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </TamaguiProvider>
+    </StrictMode>,
+  )
+}
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {

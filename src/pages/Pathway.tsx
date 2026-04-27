@@ -11,18 +11,19 @@ import {
 } from "lucide-react";
 import { Text, XStack, YStack } from "tamagui";
 import {
-  buildPathway,
   itemId,
   type GradePlan,
   type PathwayCategory,
+  type PathwayTrack,
 } from "../data/pathway";
-
-type Profile = { currentGrade: string; desiredProfession: string };
-type CustomItem = { id: string; title: string; addedAt: number };
-
-const PROFILE_KEY = "cp:profile";
-const DONE_KEY = "cp:done";
-const CUSTOM_KEY = "cp:custom";
+import { useAuth } from "../lib/authContext";
+import {
+  fetchProfile,
+  loadPathway,
+  saveCompletedItems,
+  saveCustomItems,
+  type CustomItem,
+} from "../lib/api";
 
 const TAB_META: {
   key: PathwayCategory;
@@ -36,75 +37,57 @@ const TAB_META: {
   { key: "skills", label: "Skills", Icon: Sparkles, recommendedLabel: "RECOMMENDED SKILLS" },
 ];
 
-function readProfile(): Profile | null {
-  try {
-    const raw = localStorage.getItem(PROFILE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.currentGrade === "string" &&
-      typeof parsed.desiredProfession === "string"
-    ) {
-      return parsed;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-function readSet(key: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return new Set(parsed.filter((x) => typeof x === "string"));
-  } catch {
-    return new Set();
-  }
-  return new Set();
-}
-
-function readCustom(): CustomItem[] {
-  try {
-    const raw = localStorage.getItem(CUSTOM_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-  } catch {
-    return [];
-  }
-  return [];
-}
-
 export default function Pathway() {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [done, setDone] = useState<Set<string>>(() => readSet(DONE_KEY));
-  const [custom, setCustom] = useState<CustomItem[]>(() => readCustom());
+  const { user, loading: authLoading } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [profession, setProfession] = useState("");
+  const [track, setTrack] = useState<PathwayTrack>("General");
+  const [plans, setPlans] = useState<GradePlan[]>([]);
+  const [source, setSource] = useState<"openai" | "fallback">("fallback");
+  const [done, setDone] = useState<Set<string>>(new Set());
+  const [custom, setCustom] = useState<CustomItem[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
 
   useEffect(() => {
-    const p = readProfile();
-    if (!p) {
-      navigate("/onboarding", { replace: true });
+    if (authLoading) return;
+    if (!user) {
+      navigate("/login", { replace: true });
       return;
     }
-    setProfile(p);
-  }, [navigate]);
-
-  const pathway = useMemo(() => {
-    if (!profile) return null;
-    return buildPathway(profile.currentGrade, profile.desiredProfession);
-  }, [profile]);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const profile = await fetchProfile();
+      if (!profile?.current_grade || !profile?.desired_profession) {
+        navigate("/onboarding", { replace: true });
+        return;
+      }
+      const bundle = await loadPathway(
+        profile.current_grade,
+        profile.desired_profession,
+      );
+      if (cancelled) return;
+      setProfession(profile.desired_profession);
+      setTrack(bundle.track);
+      setPlans(bundle.plans);
+      setSource(bundle.source);
+      setDone(new Set(profile.completed_items));
+      setCustom(profile.custom_items);
+      setLoading(false);
+    })().catch(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, user, navigate]);
 
   const { totalCount, doneCount } = useMemo(() => {
-    if (!pathway) return { totalCount: 0, doneCount: 0 };
     let total = 0;
     let d = 0;
-    for (const plan of pathway.plans) {
+    for (const plan of plans) {
       for (const cat of TAB_META) {
         for (const title of plan[cat.key]) {
           total += 1;
@@ -113,7 +96,7 @@ export default function Pathway() {
       }
     }
     return { totalCount: total, doneCount: d };
-  }, [pathway, done]);
+  }, [plans, done]);
 
   const progressPct = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
 
@@ -122,14 +105,14 @@ export default function Pathway() {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      localStorage.setItem(DONE_KEY, JSON.stringify(Array.from(next)));
+      if (user) saveCompletedItems(user.id, Array.from(next)).catch(() => {});
       return next;
     });
   };
 
   const addCustom = () => {
     const title = draftTitle.trim();
-    if (!title) return;
+    if (!title || !user) return;
     const entry: CustomItem = {
       id: `custom:${Date.now()}`,
       title,
@@ -137,18 +120,19 @@ export default function Pathway() {
     };
     const next = [entry, ...custom];
     setCustom(next);
-    localStorage.setItem(CUSTOM_KEY, JSON.stringify(next));
+    saveCustomItems(user.id, next).catch(() => {});
     setDraftTitle("");
     setAddOpen(false);
   };
 
   const removeCustom = (id: string) => {
+    if (!user) return;
     const next = custom.filter((c) => c.id !== id);
     setCustom(next);
-    localStorage.setItem(CUSTOM_KEY, JSON.stringify(next));
+    saveCustomItems(user.id, next).catch(() => {});
   };
 
-  if (!profile || !pathway) {
+  if (authLoading || loading) {
     return (
       <YStack
         minHeight="100vh"
@@ -175,11 +159,18 @@ export default function Pathway() {
     >
       <YStack width="100%" maxWidth={960} marginHorizontal="auto" gap={20}>
         <YStack gap={6}>
-          <Text fontSize={14} fontWeight="600" color="#2563eb">
-            {pathway.track === "General" ? "Personalized" : pathway.track} track
-          </Text>
+          <XStack alignItems="center" gap={8}>
+            <Text fontSize={14} fontWeight="600" color="#2563eb">
+              {track === "General" ? "Personalized" : track} track
+            </Text>
+            {source === "fallback" && (
+              <Text fontSize={11} color="#9ca3af">
+                · offline template
+              </Text>
+            )}
+          </XStack>
           <Text fontSize={28} fontWeight="700" color="#111827">
-            Your pathway to {profile.desiredProfession}
+            Your pathway to {profession}
           </Text>
           <Text fontSize={14} color="#6b7280">
             {doneCount} of {totalCount} recommendations complete · {progressPct}%
@@ -213,7 +204,7 @@ export default function Pathway() {
         />
 
         <YStack gap={20}>
-          {pathway.plans.map((plan, index) => (
+          {plans.map((plan, index) => (
             <GradeCard
               key={plan.gradeValue}
               index={index + 1}

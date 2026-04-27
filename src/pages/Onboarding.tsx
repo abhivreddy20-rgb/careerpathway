@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Compass, AlertCircle, Briefcase } from "lucide-react";
 import { Text, XStack, YStack } from "tamagui";
+import { useAuth } from "../lib/authContext";
+import { supabase } from "../lib/supabase";
 
 type FormState = {
   currentGrade: string;
@@ -60,35 +62,71 @@ function validate(values: FormState): FormErrors {
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [values, setValues] = useState<FormState>({
     currentGrade: "",
     desiredProfession: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/login", { replace: true });
+  }, [loading, user, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("current_grade, desired_profession")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setValues({
+            currentGrade: data.current_grade ?? "",
+            desiredProfession: data.desired_profession ?? "",
+          });
+        }
+      });
+  }, [user]);
 
   const setField = (field: keyof FormState, value: string) => {
     setValues((v) => ({ ...v, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+    if (saveError) setSaveError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      navigate("/login");
+      return;
+    }
     const found = validate(values);
     if (Object.keys(found).length > 0) {
       setErrors(found);
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    localStorage.setItem(
-      "cp:profile",
-      JSON.stringify({
-        currentGrade: values.currentGrade,
-        desiredProfession: values.desiredProfession.trim(),
-      }),
+    setSaveError(null);
+    const { error } = await supabase.from("profiles").upsert(
+      {
+        id: user.id,
+        full_name:
+          (user.user_metadata as { full_name?: string } | null)?.full_name ??
+          null,
+        current_grade: values.currentGrade,
+        desired_profession: values.desiredProfession.trim(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
     );
     setSubmitting(false);
+    if (error) {
+      setSaveError(error.message);
+      return;
+    }
     navigate("/pathway");
   };
 
@@ -203,6 +241,22 @@ export default function Onboarding() {
                 );
               })}
             </XStack>
+
+            {saveError && (
+              <XStack
+                alignItems="center"
+                gap={6}
+                paddingHorizontal={12}
+                paddingVertical={8}
+                borderRadius={8}
+                backgroundColor="#fef2f2"
+              >
+                <AlertCircle size={14} color="#dc2626" />
+                <Text fontSize={12} color="#dc2626">
+                  {saveError}
+                </Text>
+              </XStack>
+            )}
 
             <button
               type="submit"

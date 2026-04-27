@@ -10,11 +10,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Text, XStack, YStack } from "tamagui";
+import { useAuth } from "../lib/authContext";
 
 type FormState = {
   name: string;
   email: string;
-  gradeLevel: string;
   password: string;
   confirmPassword: string;
 };
@@ -45,7 +45,6 @@ function validate(values: FormState): FormErrors {
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
     errors.email = "Enter a valid email address.";
   }
-  if (!values.gradeLevel) errors.gradeLevel = "Please select your grade level.";
   if (!values.password) {
     errors.password = "Please choose a password.";
   } else if (values.password.length < 8) {
@@ -61,10 +60,10 @@ function validate(values: FormState): FormErrors {
 
 export default function CreateAccount() {
   const navigate = useNavigate();
+  const { signUp, signOut } = useAuth();
   const [values, setValues] = useState<FormState>({
     name: "",
     email: "",
-    gradeLevel: "",
     password: "",
     confirmPassword: "",
   });
@@ -72,12 +71,15 @@ export default function CreateAccount() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [confirmNotice, setConfirmNotice] = useState<string | null>(null);
 
   const handleChange =
     (field: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setValues((v) => ({ ...v, [field]: e.target.value }));
       if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+      if (authError) setAuthError(null);
     };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,9 +90,30 @@ export default function CreateAccount() {
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    navigate("/onboarding");
+    setAuthError(null);
+    try {
+      const { needsEmailConfirmation } = await signUp(
+        values.email.trim(),
+        values.password,
+        { full_name: values.name.trim(), grade_level: "" },
+      );
+      if (needsEmailConfirmation) {
+        setConfirmNotice(
+          "Account created. Check your inbox to confirm your email, then log in.",
+        );
+        return;
+      }
+      await signOut();
+      navigate("/login", {
+        state: { justSignedUp: true, email: values.email.trim() },
+      });
+    } catch (err) {
+      setAuthError(
+        err instanceof Error ? err.message : "Could not create account.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -214,6 +237,36 @@ export default function CreateAccount() {
                 style={inputBaseStyle}
               />
             </Field>
+
+            {authError && (
+              <XStack
+                alignItems="center"
+                gap={6}
+                paddingHorizontal={12}
+                paddingVertical={8}
+                borderRadius={8}
+                backgroundColor="#fef2f2"
+              >
+                <AlertCircle size={14} color="#dc2626" />
+                <Text fontSize={12} color="#dc2626">
+                  {authError}
+                </Text>
+              </XStack>
+            )}
+            {confirmNotice && (
+              <XStack
+                alignItems="center"
+                gap={6}
+                paddingHorizontal={12}
+                paddingVertical={8}
+                borderRadius={8}
+                backgroundColor="#ecfdf5"
+              >
+                <Text fontSize={12} color="#047857">
+                  {confirmNotice}
+                </Text>
+              </XStack>
+            )}
 
             <button
               type="submit"

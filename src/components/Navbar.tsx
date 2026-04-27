@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, GraduationCap } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, GraduationCap, LogOut } from "lucide-react";
 import { Text, XStack, YStack } from "tamagui";
+import { useAuth } from "../lib/authContext";
 
 const navLinks = [
   { to: "/", label: "Home" },
@@ -14,6 +15,14 @@ const navLinks = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    setOpen(false);
+    navigate("/");
+  };
 
   return (
     <YStack
@@ -82,34 +91,71 @@ export default function Navbar() {
           alignItems="center"
           gap={8}
         >
-          <Link to="/login" style={{ textDecoration: "none" }}>
-            <YStack
-              borderRadius={8}
-              paddingHorizontal={16}
-              paddingVertical={10}
-              hoverStyle={{ backgroundColor: "#f3f4f6" }}
-              cursor="pointer"
-            >
-              <Text fontSize={14} fontWeight="600" color="#1d4ed8">
-                Login
-              </Text>
-            </YStack>
-          </Link>
-          <Link to="/signup" style={{ textDecoration: "none" }}>
-            <YStack
-              backgroundColor="#2563eb"
-              hoverStyle={{ backgroundColor: "#1d4ed8" }}
-              pressStyle={{ backgroundColor: "#1e40af" }}
-              borderRadius={8}
-              paddingHorizontal={20}
-              paddingVertical={10}
-              cursor="pointer"
-            >
-              <Text fontSize={14} fontWeight="600" color="white">
-                Sign up
-              </Text>
-            </YStack>
-          </Link>
+          {user ? (
+            <>
+              <Link to="/pathway" style={{ textDecoration: "none" }}>
+                <YStack
+                  borderRadius={8}
+                  paddingHorizontal={16}
+                  paddingVertical={10}
+                  hoverStyle={{ backgroundColor: "#f3f4f6" }}
+                  cursor="pointer"
+                >
+                  <Text fontSize={14} fontWeight="600" color="#1d4ed8">
+                    My pathway
+                  </Text>
+                </YStack>
+              </Link>
+              <YStack
+                onPress={handleSignOut}
+                borderRadius={8}
+                paddingHorizontal={16}
+                paddingVertical={10}
+                borderWidth={1}
+                borderColor="#d1d5db"
+                hoverStyle={{ backgroundColor: "#f9fafb" }}
+                cursor="pointer"
+              >
+                <XStack alignItems="center" gap={6}>
+                  <LogOut size={14} color="#4b5563" />
+                  <Text fontSize={14} fontWeight="600" color="#4b5563">
+                    Log out
+                  </Text>
+                </XStack>
+              </YStack>
+            </>
+          ) : (
+            <>
+              <Link to="/login" style={{ textDecoration: "none" }}>
+                <YStack
+                  borderRadius={8}
+                  paddingHorizontal={16}
+                  paddingVertical={10}
+                  hoverStyle={{ backgroundColor: "#f3f4f6" }}
+                  cursor="pointer"
+                >
+                  <Text fontSize={14} fontWeight="600" color="#1d4ed8">
+                    Login
+                  </Text>
+                </YStack>
+              </Link>
+              <Link to="/signup" style={{ textDecoration: "none" }}>
+                <YStack
+                  backgroundColor="#2563eb"
+                  hoverStyle={{ backgroundColor: "#1d4ed8" }}
+                  pressStyle={{ backgroundColor: "#1e40af" }}
+                  borderRadius={8}
+                  paddingHorizontal={20}
+                  paddingVertical={10}
+                  cursor="pointer"
+                >
+                  <Text fontSize={14} fontWeight="600" color="white">
+                    Sign up
+                  </Text>
+                </YStack>
+              </Link>
+            </>
+          )}
         </XStack>
 
         <YStack $gtSm={{ display: "none" }}>
@@ -171,12 +217,9 @@ export default function Navbar() {
             })}
           </YStack>
           <YStack gap={8} marginTop={12}>
-            <Link
-              to="/login"
-              onClick={() => setOpen(false)}
-              style={{ textDecoration: "none" }}
-            >
+            {user ? (
               <YStack
+                onPress={handleSignOut}
                 width="100%"
                 borderWidth={1}
                 borderColor="#d1d5db"
@@ -186,30 +229,53 @@ export default function Navbar() {
                 alignItems="center"
                 cursor="pointer"
               >
-                <Text fontSize={14} fontWeight="600" color="#1d4ed8">
-                  Login
+                <Text fontSize={14} fontWeight="600" color="#4b5563">
+                  Log out
                 </Text>
               </YStack>
-            </Link>
-            <Link
-              to="/signup"
-              onClick={() => setOpen(false)}
-              style={{ textDecoration: "none" }}
-            >
-              <YStack
-                width="100%"
-                backgroundColor="#2563eb"
-                hoverStyle={{ backgroundColor: "#1d4ed8" }}
-                borderRadius={8}
-                paddingVertical={10}
-                alignItems="center"
-                cursor="pointer"
-              >
-                <Text fontSize={14} fontWeight="600" color="white">
-                  Sign up
-                </Text>
-              </YStack>
-            </Link>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  onClick={() => setOpen(false)}
+                  style={{ textDecoration: "none" }}
+                >
+                  <YStack
+                    width="100%"
+                    borderWidth={1}
+                    borderColor="#d1d5db"
+                    hoverStyle={{ backgroundColor: "#f9fafb" }}
+                    borderRadius={8}
+                    paddingVertical={10}
+                    alignItems="center"
+                    cursor="pointer"
+                  >
+                    <Text fontSize={14} fontWeight="600" color="#1d4ed8">
+                      Login
+                    </Text>
+                  </YStack>
+                </Link>
+                <Link
+                  to="/signup"
+                  onClick={() => setOpen(false)}
+                  style={{ textDecoration: "none" }}
+                >
+                  <YStack
+                    width="100%"
+                    backgroundColor="#2563eb"
+                    hoverStyle={{ backgroundColor: "#1d4ed8" }}
+                    borderRadius={8}
+                    paddingVertical={10}
+                    alignItems="center"
+                    cursor="pointer"
+                  >
+                    <Text fontSize={14} fontWeight="600" color="white">
+                      Sign up
+                    </Text>
+                  </YStack>
+                </Link>
+              </>
+            )}
           </YStack>
         </YStack>
       )}
