@@ -1,64 +1,133 @@
 import { Link } from 'react-router-dom'
 import { Compass, Globe, MessageCircle, Users } from 'lucide-react'
+import { Text, XStack, YStack } from 'tamagui'
+
+const exploreLinks = [
+  { to: '/careers', label: 'Career Explorer' },
+  { to: '/quiz', label: 'Career Quiz' },
+  { to: '/pathways', label: 'Learning Pathways' },
+]
+
+const companyLinks = [
+  { to: '/about', label: 'About Us' },
+  { to: '/about', label: 'Contact' },
+  { to: '/about', label: 'Privacy Policy' },
+]
+
+function FooterLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Link to={to} style={{ textDecoration: 'none' }}>
+      <Text
+        fontSize={14}
+        color="#9ca3af"
+        hoverStyle={{ color: 'white' }}
+        cursor="pointer"
+      >
+        {label}
+      </Text>
+    </Link>
+  )
+}
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-400">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Brand */}
-          <div className="sm:col-span-2 lg:col-span-1">
-            <Link to="/" className="flex items-center gap-2 text-white font-bold text-lg">
-              <Compass className="h-6 w-6" />
-              CareerPathway
+    <YStack backgroundColor="#111827">
+      <YStack
+        width="100%"
+        maxWidth={1280}
+        marginHorizontal="auto"
+        paddingHorizontal={16}
+        paddingVertical={48}
+      >
+        <XStack flexWrap="wrap" gap={32}>
+          <YStack flex={1} minWidth={240} gap={12}>
+            <Link to="/" style={{ textDecoration: 'none' }}>
+              <XStack alignItems="center" gap={8}>
+                <Compass size={24} color="white" />
+                <Text fontSize={18} fontWeight="700" color="white">
+                  CareerPathway
+                </Text>
+              </XStack>
             </Link>
-            <p className="mt-3 text-sm leading-relaxed">
+            <Text fontSize={14} color="#9ca3af" lineHeight={22}>
               Helping students and professionals navigate their career journey with
               confidence through exploration, assessments, and guided pathways.
-            </p>
-          </div>
+            </Text>
+          </YStack>
 
-          {/* Quick Links */}
-          <div>
-            <h3 className="font-semibold text-white text-sm mb-3">Explore</h3>
-            <ul className="space-y-2 text-sm">
-              <li><Link to="/careers" className="hover:text-white transition-colors">Career Explorer</Link></li>
-              <li><Link to="/quiz" className="hover:text-white transition-colors">Career Quiz</Link></li>
-              <li><Link to="/pathways" className="hover:text-white transition-colors">Learning Pathways</Link></li>
-            </ul>
-          </div>
+          <YStack flex={1} minWidth={160} gap={12}>
+            <Text fontSize={14} fontWeight="600" color="white">
+              Explore
+            </Text>
+            <YStack gap={8}>
+              {exploreLinks.map((l) => (
+                <FooterLink key={l.label} to={l.to} label={l.label} />
+              ))}
+            </YStack>
+          </YStack>
 
-          {/* Company */}
-          <div>
-            <h3 className="font-semibold text-white text-sm mb-3">Company</h3>
-            <ul className="space-y-2 text-sm">
-              <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
-              <li><Link to="/about" className="hover:text-white transition-colors">Contact</Link></li>
-              <li><Link to="/about" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-            </ul>
-          </div>
+          <YStack flex={1} minWidth={160} gap={12}>
+            <Text fontSize={14} fontWeight="600" color="white">
+              Company
+            </Text>
+            <YStack gap={8}>
+              {companyLinks.map((l) => (
+                <FooterLink key={l.label} to={l.to} label={l.label} />
+              ))}
+            </YStack>
+          </YStack>
 
-          {/* Social */}
-          <div>
-            <h3 className="font-semibold text-white text-sm mb-3">Connect</h3>
-            <div className="flex gap-3">
-              <a href="#" className="rounded-lg bg-gray-800 p-2 hover:bg-gray-700 transition-colors" aria-label="Social">
-                <MessageCircle className="h-5 w-5" />
-              </a>
-              <a href="#" className="rounded-lg bg-gray-800 p-2 hover:bg-gray-700 transition-colors" aria-label="Community">
-                <Users className="h-5 w-5" />
-              </a>
-              <a href="#" className="rounded-lg bg-gray-800 p-2 hover:bg-gray-700 transition-colors" aria-label="Website">
-                <Globe className="h-5 w-5" />
-              </a>
-            </div>
-          </div>
-        </div>
+          <YStack flex={1} minWidth={160} gap={12}>
+            <Text fontSize={14} fontWeight="600" color="white">
+              Connect
+            </Text>
+            <XStack gap={12}>
+              <YStack
+                backgroundColor="#1f2937"
+                hoverStyle={{ backgroundColor: '#374151' }}
+                borderRadius={8}
+                padding={8}
+                cursor="pointer"
+                aria-label="Social"
+              >
+                <MessageCircle size={20} color="#9ca3af" />
+              </YStack>
+              <YStack
+                backgroundColor="#1f2937"
+                hoverStyle={{ backgroundColor: '#374151' }}
+                borderRadius={8}
+                padding={8}
+                cursor="pointer"
+                aria-label="Community"
+              >
+                <Users size={20} color="#9ca3af" />
+              </YStack>
+              <YStack
+                backgroundColor="#1f2937"
+                hoverStyle={{ backgroundColor: '#374151' }}
+                borderRadius={8}
+                padding={8}
+                cursor="pointer"
+                aria-label="Website"
+              >
+                <Globe size={20} color="#9ca3af" />
+              </YStack>
+            </XStack>
+          </YStack>
+        </XStack>
 
-        <div className="mt-10 border-t border-gray-800 pt-6 text-center text-xs">
-          &copy; {new Date().getFullYear()} CareerPathway. All rights reserved.
-        </div>
-      </div>
-    </footer>
+        <YStack
+          marginTop={40}
+          borderTopWidth={1}
+          borderTopColor="#1f2937"
+          paddingTop={24}
+          alignItems="center"
+        >
+          <Text fontSize={12} color="#9ca3af">
+            &copy; {new Date().getFullYear()} CareerPathway. All rights reserved.
+          </Text>
+        </YStack>
+      </YStack>
+    </YStack>
   )
 }
