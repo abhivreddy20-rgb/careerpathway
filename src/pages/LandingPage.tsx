@@ -175,7 +175,16 @@ export default function Home() {
           paddingHorizontal={16}
           paddingVertical={64}
         >
-          <Text fontSize={30} textAlign="center" marginBottom={48}>
+          <Text
+            fontSize={22}
+            lineHeight={30}
+            $gtXs={{ fontSize: 26, lineHeight: 34 }}
+            $gtSm={{ fontSize: 30, lineHeight: 38 }}
+            textAlign="center"
+            marginBottom={48}
+            paddingHorizontal={8}
+            style={{ wordBreak: "break-word" }}
+          >
             How CareerPath Helps You Succeed
           </Text>
 
@@ -226,8 +235,15 @@ export default function Home() {
             paddingHorizontal={16}
           >
             <XStack gap={48} flexWrap="wrap" alignItems="center">
-              <YStack flex={1} minWidth={320}>
-                <Text fontSize={30} marginBottom={24}>
+              <YStack flex={1} minWidth={280}>
+                <Text
+                  fontSize={22}
+                  lineHeight={30}
+                  $gtXs={{ fontSize: 26, lineHeight: 34 }}
+                  $gtSm={{ fontSize: 30, lineHeight: 38 }}
+                  marginBottom={24}
+                  style={{ wordBreak: "break-word" }}
+                >
                   Plan Your Perfect Path
                 </Text>
                 <YStack gap={16}>
@@ -251,15 +267,22 @@ export default function Home() {
 
               <YStack
                 flex={1}
-                minWidth={320}
+                minWidth={280}
                 borderRadius={8}
-                padding={32}
+                padding={24}
+                $gtSm={{ padding: 32 }}
                 style={{
                   background:
                     "linear-gradient(to bottom right, #2563eb, #9333ea)",
                 }}
               >
-                <Text fontSize={24} marginBottom={16} color="white">
+                <Text
+                  fontSize={20}
+                  lineHeight={28}
+                  $gtSm={{ fontSize: 24, lineHeight: 32 }}
+                  marginBottom={16}
+                  color="white"
+                >
                   Ready to Get Started?
                 </Text>
                 <Text
