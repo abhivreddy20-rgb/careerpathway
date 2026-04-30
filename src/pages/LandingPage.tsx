@@ -98,10 +98,13 @@ export default function Home() {
           </YStack>
 
           <Text
-            fontSize={48}
-            $gtSm={{ fontSize: 60 }}
+            fontSize={32}
+            lineHeight={40}
+            $gtXs={{ fontSize: 40, lineHeight: 48 }}
+            $gtSm={{ fontSize: 60, lineHeight: 72 }}
             marginBottom={24}
-            padding={15}
+            paddingHorizontal={8}
+            paddingVertical={12}
             textAlign="center"
             style={{
               background: "linear-gradient(to right, #2563eb, #9333ea)",
@@ -109,18 +112,20 @@ export default function Home() {
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
               color: "transparent",
+              wordBreak: "break-word",
             }}
           >
             Your Future Starts Here
           </Text>
 
           <Text
-            fontSize={20}
+            fontSize={16}
+            lineHeight={24}
+            $gtSm={{ fontSize: 20, lineHeight: 30 }}
             color="#4b5563"
             marginBottom={32}
             maxWidth={640}
             textAlign="center"
-            lineHeight={30}
           >
             Discover your personalized career pathway with tailored
             recommendations for courses, activities, and volunteer opportunities
