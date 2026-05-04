@@ -19,7 +19,7 @@ Open the Supabase dashboard → **SQL Editor** → **New query**, paste the cont
 
 Dashboard → **Authentication → Providers**: ensure **Email** is enabled. For development, you may want to disable "Confirm email" under **Authentication → Sign In / Up** so you can log in immediately after signup; re-enable it before going to production.
 
-## 4. Edge function (OpenAI proxy)
+## 4. Edge functions
 
 Install the Supabase CLI once:
 
@@ -29,16 +29,36 @@ supabase login
 supabase link --project-ref YOUR-PROJECT-REF
 ```
 
-Set the OpenAI key as a secret (do not commit it):
+Set provider keys as secrets (never commit them):
 
 ```
 supabase secrets set OPENAI_API_KEY=sk-...
+supabase secrets set ONET_USERNAME=your-onet-username
+supabase secrets set ONET_PASSWORD=your-onet-password
+supabase secrets set COLLEGE_SCORECARD_API_KEY=...
 ```
 
-Deploy the function:
+Where to get the keys:
+- **OpenAI** — https://platform.openai.com/api-keys
+- **O*NET** — https://services.onetcenter.org/developer/email (free, immediate)
+- **College Scorecard** — https://api.data.gov/signup/ (free, immediate)
+
+Deploy the functions:
 
 ```
 supabase functions deploy generate-pathway
+supabase functions deploy lookup-occupation
+supabase functions deploy search-colleges
+supabase functions deploy suggest-skills
 ```
 
-The frontend calls it via `supabase.functions.invoke("generate-pathway", ...)` from `src/lib/api.ts`. If the function fails or `OPENAI_API_KEY` is unset, the client falls back to the local `buildPathway` template.
+The frontend invokes these via `src/lib/api.ts`:
+
+| Function            | Client fn          | Fills cache table              |
+| ------------------- | ------------------ | ------------------------------ |
+| `generate-pathway`  | `loadPathway`      | `pathways` (per user)          |
+| `lookup-occupation` | `lookupOccupation` | `occupations`, `profession_lookup` |
+| `search-colleges`   | `searchColleges`   | `colleges`, `api_cache`        |
+| `suggest-skills`    | `suggestSkills`    | `api_cache` (provider=`onet`)  |
+
+Each function checks its cache table before calling the upstream API, so repeat queries do not burn quota. If a provider key is unset, the function returns an empty/`unconfigured` result rather than erroring — the frontend should treat that as a graceful no-op.

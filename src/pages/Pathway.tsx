@@ -22,7 +22,9 @@ import {
   loadPathway,
   saveCompletedItems,
   saveCustomItems,
+  suggestSkills,
   type CustomItem,
+  type SuggestedSkill,
 } from "../lib/api";
 
 const TAB_META: {
@@ -41,6 +43,7 @@ export default function Pathway() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [profession, setProfession] = useState("");
   const [track, setTrack] = useState<PathwayTrack>("General");
   const [plans, setPlans] = useState<GradePlan[]>([]);
@@ -49,6 +52,10 @@ export default function Pathway() {
   const [custom, setCustom] = useState<CustomItem[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
+  const [liveSkills, setLiveSkills] = useState<SuggestedSkill[]>([]);
+  const [skillsSource, setSkillsSource] = useState<
+    "onet" | "cache" | "onet_unconfigured" | "no_match" | null
+  >(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -59,6 +66,7 @@ export default function Pathway() {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setLoadError(null);
       const profile = await fetchProfile();
       if (!profile?.current_grade || !profile?.desired_profession) {
         navigate("/onboarding", { replace: true });
@@ -76,8 +84,23 @@ export default function Pathway() {
       setDone(new Set(profile.completed_items));
       setCustom(profile.custom_items);
       setLoading(false);
-    })().catch(() => {
-      if (!cancelled) setLoading(false);
+
+      // Fire-and-forget: enrich the page with live O*NET skills.
+      // Failure here must not block the rest of the pathway from rendering.
+      suggestSkills({ profession: profile.desired_profession })
+        .then((res) => {
+          if (cancelled || !res) return;
+          setLiveSkills(res.skills);
+          setSkillsSource(res.source);
+        })
+        .catch((err) => console.error("suggestSkills failed", err));
+    })().catch((err: unknown) => {
+      if (cancelled) return;
+      console.error("Failed to load pathway", err);
+      const msg =
+        err instanceof Error ? err.message : "Could not load your pathway.";
+      setLoadError(msg);
+      setLoading(false);
     });
     return () => {
       cancelled = true;
@@ -147,6 +170,43 @@ export default function Pathway() {
     );
   }
 
+  if (loadError) {
+    return (
+      <YStack
+        minHeight="100vh"
+        alignItems="center"
+        justifyContent="center"
+        gap={12}
+        paddingHorizontal={24}
+        style={{ background: "linear-gradient(to bottom right, #eff6ff, #faf5ff, #fdf2f8)" }}
+      >
+        <Text fontSize={16} fontWeight="600" color="#b91c1c">
+          We couldn't load your pathway.
+        </Text>
+        <Text fontSize={13} color="#6b7280" textAlign="center" maxWidth={420}>
+          {loadError}
+        </Text>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          style={{
+            height: 38,
+            padding: "0 16px",
+            borderRadius: 8,
+            border: "none",
+            background: "linear-gradient(to right, #2563eb, #9333ea)",
+            color: "white",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Retry
+        </button>
+      </YStack>
+    );
+  }
+
   return (
     <YStack
       minHeight="100vh"
@@ -202,6 +262,14 @@ export default function Pathway() {
           items={custom}
           onRemove={removeCustom}
         />
+
+        {liveSkills.length > 0 && (
+          <LiveSkillsCard
+            profession={profession}
+            skills={liveSkills}
+            source={skillsSource}
+          />
+        )}
 
         <YStack gap={20}>
           {plans.map((plan, index) => (
@@ -494,6 +562,87 @@ function GradeCard({
             })}
           </YStack>
         </YStack>
+      </YStack>
+    </YStack>
+  );
+}
+
+function LiveSkillsCard({
+  profession,
+  skills,
+  source,
+}: {
+  profession: string;
+  skills: SuggestedSkill[];
+  source: "onet" | "cache" | "onet_unconfigured" | "no_match" | null;
+}) {
+  return (
+    <YStack
+      borderWidth={1}
+      borderColor="#e9d5ff"
+      borderRadius={12}
+      backgroundColor="rgba(250, 245, 255, 0.6)"
+      padding={16}
+      gap={12}
+    >
+      <XStack alignItems="center" justifyContent="space-between" gap={8}>
+        <XStack alignItems="center" gap={10}>
+          <Sparkles size={20} color="#9333ea" />
+          <Text fontSize={16} fontWeight="600" color="#111827">
+            In-demand skills for {profession}
+          </Text>
+        </XStack>
+        <Text fontSize={11} color="#9ca3af">
+          {source === "cache" ? "cached" : "live"} · O*NET
+        </Text>
+      </XStack>
+      <YStack gap={8}>
+        {skills.map((s) => {
+          const pct = Math.max(0, Math.min(100, s.importance ?? 0));
+          return (
+            <YStack
+              key={s.name}
+              gap={6}
+              paddingHorizontal={12}
+              paddingVertical={10}
+              borderRadius={8}
+              backgroundColor="white"
+              borderWidth={1}
+              borderColor="#f3e8ff"
+            >
+              <XStack alignItems="center" justifyContent="space-between" gap={8}>
+                <Text fontSize={14} fontWeight="600" color="#111827">
+                  {s.name}
+                </Text>
+                {s.importance !== null && (
+                  <Text fontSize={11} color="#6b7280">
+                    importance {pct}
+                  </Text>
+                )}
+              </XStack>
+              {s.description && (
+                <Text fontSize={12} color="#6b7280">
+                  {s.description}
+                </Text>
+              )}
+              <YStack
+                height={6}
+                borderRadius={9999}
+                backgroundColor="#f3e8ff"
+                overflow="hidden"
+              >
+                <YStack
+                  width={`${pct}%`}
+                  height="100%"
+                  style={{
+                    background:
+                      "linear-gradient(to right, #a855f7, #9333ea)",
+                  }}
+                />
+              </YStack>
+            </YStack>
+          );
+        })}
       </YStack>
     </YStack>
   );

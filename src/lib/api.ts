@@ -65,3 +65,94 @@ export async function loadPathway(
   }
   return data;
 }
+
+export type Occupation = {
+  onet_code: string;
+  title: string;
+  description: string | null;
+  median_wage: number | null;
+  education: string | null;
+  outlook: string | null;
+  skills: string[];
+  related_titles: string[];
+};
+
+export type OccupationLookup = {
+  profession_key: string;
+  track: string;
+  occupations: Occupation[];
+  source: "onet" | "onet_empty" | "onet_unconfigured";
+};
+
+export async function lookupOccupation(
+  profession: string,
+): Promise<OccupationLookup | null> {
+  const { data, error } = await supabase.functions.invoke<OccupationLookup>(
+    "lookup-occupation",
+    { body: { profession } },
+  );
+  if (error || !data) return null;
+  return data;
+}
+
+export type College = {
+  unitid: number;
+  name: string;
+  city: string | null;
+  state: string | null;
+  admission_rate: number | null;
+  sat_avg: number | null;
+  cost_attendance: number | null;
+  size: number | null;
+  url: string | null;
+};
+
+export type CollegeSearchInput = {
+  state?: string;
+  satMin?: number;
+  satMax?: number;
+  query?: string;
+  limit?: number;
+};
+
+export type CollegeSearchResult = {
+  colleges: College[];
+  source: "scorecard" | "cache" | "unconfigured";
+};
+
+export async function searchColleges(
+  input: CollegeSearchInput,
+): Promise<CollegeSearchResult | null> {
+  const { data, error } = await supabase.functions.invoke<CollegeSearchResult>(
+    "search-colleges",
+    { body: input },
+  );
+  if (error || !data) return null;
+  return data;
+}
+
+export type SuggestedSkill = {
+  name: string;
+  description: string | null;
+  importance: number | null;
+  level: number | null;
+};
+
+export type SkillsSuggestion = {
+  onet_code: string | null;
+  occupation_title: string | null;
+  skills: SuggestedSkill[];
+  source: "onet" | "cache" | "onet_unconfigured" | "no_match";
+};
+
+export async function suggestSkills(input: {
+  profession?: string;
+  onetCode?: string;
+}): Promise<SkillsSuggestion | null> {
+  const { data, error } = await supabase.functions.invoke<SkillsSuggestion>(
+    "suggest-skills",
+    { body: input },
+  );
+  if (error || !data) return null;
+  return data;
+}
