@@ -6,8 +6,10 @@ create table if not exists public.profiles (
   full_name text,
   current_grade text,
   desired_profession text,
-  completed_items jsonb not null default '[]'::jsonb,
-  custom_items jsonb not null default '[]'::jsonb,
+  secondary_profession text,
+  active_profession text,
+  completed_items jsonb not null default '{}'::jsonb,
+  custom_items jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
 

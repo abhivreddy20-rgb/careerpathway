@@ -30,6 +30,12 @@ const FIELDS = [
   "school.school_url",
   "latest.admissions.admission_rate.overall",
   "latest.admissions.sat_scores.average.overall",
+  "latest.admissions.sat_scores.25th_percentile.critical_reading",
+  "latest.admissions.sat_scores.75th_percentile.critical_reading",
+  "latest.admissions.sat_scores.25th_percentile.math",
+  "latest.admissions.sat_scores.75th_percentile.math",
+  "latest.admissions.act_scores.25th_percentile.cumulative",
+  "latest.admissions.act_scores.75th_percentile.cumulative",
   "latest.cost.attendance.academic_year",
   "latest.student.size",
 ].join(",");
@@ -41,6 +47,15 @@ type College = {
   state: string | null;
   admission_rate: number | null;
   sat_avg: number | null;
+  // SAT/ACT 25th–75th percentile ranges. Schools that don't report admissions
+  // data return null here; we filter the worst-offender (admission_rate) at
+  // the API level so most of these come back populated.
+  sat_reading_25: number | null;
+  sat_reading_75: number | null;
+  sat_math_25: number | null;
+  sat_math_75: number | null;
+  act_25: number | null;
+  act_75: number | null;
   cost_attendance: number | null;
   size: number | null;
   url: string | null;
@@ -52,14 +67,25 @@ type Query = {
   satMax?: number;
   query?: string;
   limit?: number;
+  cipCodes?: string[];
 };
 
+function normalizeCipCodes(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((c) => String(c).trim())
+    .filter((c) => /^\d{4}$/.test(c))
+    .sort();
+}
+
 function buildCacheKey(q: Query): string {
+  const cips = normalizeCipCodes(q.cipCodes);
   const parts = [
     q.state ? `st=${q.state.toUpperCase()}` : "",
     q.satMin ? `satMin=${q.satMin}` : "",
     q.satMax ? `satMax=${q.satMax}` : "",
     q.query ? `q=${q.query.toLowerCase().trim()}` : "",
+    cips.length ? `cip=${cips.join(",")}` : "",
     `limit=${Math.min(q.limit ?? DEFAULT_LIMIT, MAX_LIMIT)}`,
   ].filter(Boolean);
   return parts.join("&") || "all";
@@ -71,6 +97,12 @@ function buildScorecardUrl(q: Query): string {
     fields: FIELDS,
     per_page: String(Math.min(q.limit ?? DEFAULT_LIMIT, MAX_LIMIT)),
     "school.operating": "1",
+    // Show the most selective (lowest admission rate) schools first. Without
+    // this, Scorecard sorts alphabetically and Alabama wins.
+    sort: "latest.admissions.admission_rate.overall:asc",
+    // Drop schools that don't report admission data so the sort isn't
+    // poisoned by nulls.
+    "latest.admissions.admission_rate.overall__range": "0.001..1",
   });
   if (q.state) params.set("school.state", q.state.toUpperCase());
   if (q.satMin)
@@ -78,6 +110,13 @@ function buildScorecardUrl(q: Query): string {
   else if (q.satMax)
     params.set("latest.admissions.sat_scores.average.overall__range", `..${q.satMax}`);
   if (q.query) params.set("school.name", q.query);
+  // cip_4_digit.code is the only program-filter field Scorecard supports;
+  // comma-separated values OR across them so we match any school that offers
+  // a program in any of the requested codes.
+  const cips = normalizeCipCodes(q.cipCodes);
+  if (cips.length > 0) {
+    params.set("latest.programs.cip_4_digit.code", cips.join(","));
+  }
   return `${SCORECARD_BASE}?${params.toString()}`;
 }
 
@@ -90,6 +129,18 @@ function flatten(row: any): College | null {
     state: row["school.state"] ?? null,
     admission_rate: row["latest.admissions.admission_rate.overall"] ?? null,
     sat_avg: row["latest.admissions.sat_scores.average.overall"] ?? null,
+    sat_reading_25:
+      row["latest.admissions.sat_scores.25th_percentile.critical_reading"] ??
+      null,
+    sat_reading_75:
+      row["latest.admissions.sat_scores.75th_percentile.critical_reading"] ??
+      null,
+    sat_math_25:
+      row["latest.admissions.sat_scores.25th_percentile.math"] ?? null,
+    sat_math_75:
+      row["latest.admissions.sat_scores.75th_percentile.math"] ?? null,
+    act_25: row["latest.admissions.act_scores.25th_percentile.cumulative"] ?? null,
+    act_75: row["latest.admissions.act_scores.75th_percentile.cumulative"] ?? null,
     cost_attendance: row["latest.cost.attendance.academic_year"] ?? null,
     size: row["latest.student.size"] ?? null,
     url: row["school.school_url"] ?? null,

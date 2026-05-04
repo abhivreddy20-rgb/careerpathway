@@ -4,10 +4,12 @@ import { Compass, AlertCircle, Briefcase } from "lucide-react";
 import { Text, XStack, YStack } from "tamagui";
 import { useAuth } from "../lib/authContext";
 import { supabase } from "../lib/supabase";
+import { PROFESSION_SUGGESTIONS } from "../data/professions";
 
 type FormState = {
   currentGrade: string;
   desiredProfession: string;
+  secondaryProfession: string;
 };
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -22,16 +24,7 @@ const gradeOptions = [
   { value: "other", label: "Other" },
 ];
 
-const professionSuggestions = [
-  "Software Engineer",
-  "Doctor",
-  "Teacher",
-  "Designer",
-  "Entrepreneur",
-  "Lawyer",
-  "Data Scientist",
-  "Nurse",
-];
+const professionSuggestions = PROFESSION_SUGGESTIONS;
 
 const inputBaseStyle: React.CSSProperties = {
   width: "100%",
@@ -57,6 +50,14 @@ function validate(values: FormState): FormErrors {
   if (!values.desiredProfession.trim()) {
     errors.desiredProfession = "Please share the profession you're aiming for.";
   }
+  if (
+    values.secondaryProfession.trim() &&
+    values.secondaryProfession.trim().toLowerCase() ===
+      values.desiredProfession.trim().toLowerCase()
+  ) {
+    errors.secondaryProfession =
+      "Pick a different profession from your primary one.";
+  }
   return errors;
 }
 
@@ -66,10 +67,12 @@ export default function Onboarding() {
   const [values, setValues] = useState<FormState>({
     currentGrade: "",
     desiredProfession: "",
+    secondaryProfession: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showSecondary, setShowSecondary] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/login", { replace: true });
@@ -79,14 +82,16 @@ export default function Onboarding() {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("current_grade, desired_profession")
+      .select("current_grade, desired_profession, secondary_profession")
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
           setValues({
             currentGrade: data.current_grade ?? "",
             desiredProfession: data.desired_profession ?? "",
+            secondaryProfession: data.secondary_profession ?? "",
           });
+          if (data.secondary_profession) setShowSecondary(true);
         }
       });
   }, [user]);
@@ -110,6 +115,8 @@ export default function Onboarding() {
     }
     setSubmitting(true);
     setSaveError(null);
+    const primary = values.desiredProfession.trim();
+    const secondary = values.secondaryProfession.trim() || null;
     const { error } = await supabase.from("profiles").upsert(
       {
         id: user.id,
@@ -117,7 +124,9 @@ export default function Onboarding() {
           (user.user_metadata as { full_name?: string } | null)?.full_name ??
           null,
         current_grade: values.currentGrade,
-        desired_profession: values.desiredProfession.trim(),
+        desired_profession: primary,
+        secondary_profession: secondary,
+        active_profession: primary,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "id" },
@@ -241,6 +250,48 @@ export default function Onboarding() {
                 );
               })}
             </XStack>
+
+            {!showSecondary ? (
+              <YStack
+                onPress={() => setShowSecondary(true)}
+                alignSelf="flex-start"
+                cursor="pointer"
+              >
+                <Text fontSize={13} fontWeight="600" color="#2563eb">
+                  + Add a second career (optional)
+                </Text>
+              </YStack>
+            ) : (
+              <Field
+                label="Second career (optional)"
+                error={errors.secondaryProfession}
+                icon={<Briefcase size={18} color="#9ca3af" />}
+              >
+                <input
+                  type="text"
+                  list="profession-suggestions"
+                  placeholder="e.g. Doctor"
+                  value={values.secondaryProfession}
+                  onChange={(e) =>
+                    setField("secondaryProfession", e.target.value)
+                  }
+                  style={inputBaseStyle}
+                />
+                <XStack
+                  marginTop={6}
+                  onPress={() => {
+                    setShowSecondary(false);
+                    setField("secondaryProfession", "");
+                  }}
+                  alignSelf="flex-start"
+                  cursor="pointer"
+                >
+                  <Text fontSize={12} color="#6b7280">
+                    Remove second career
+                  </Text>
+                </XStack>
+              </Field>
+            )}
 
             {saveError && (
               <XStack

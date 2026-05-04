@@ -47,18 +47,16 @@ Deploy the functions:
 
 ```
 supabase functions deploy generate-pathway
-supabase functions deploy lookup-occupation
 supabase functions deploy search-colleges
 supabase functions deploy suggest-skills
 ```
 
 The frontend invokes these via `src/lib/api.ts`:
 
-| Function            | Client fn          | Fills cache table              |
-| ------------------- | ------------------ | ------------------------------ |
-| `generate-pathway`  | `loadPathway`      | `pathways` (per user)          |
-| `lookup-occupation` | `lookupOccupation` | `occupations`, `profession_lookup` |
-| `search-colleges`   | `searchColleges`   | `colleges`, `api_cache`        |
-| `suggest-skills`    | `suggestSkills`    | `api_cache` (provider=`onet`)  |
+| Function           | Client fn        | Fills cache table             |
+| ------------------ | ---------------- | ----------------------------- |
+| `generate-pathway` | `loadPathway`    | `pathways` (per user)         |
+| `search-colleges`  | `searchColleges` | `colleges`, `api_cache`       |
+| `suggest-skills`   | `suggestSkills`  | `api_cache` (provider=`onet`) |
 
 Each function checks its cache table before calling the upstream API, so repeat queries do not burn quota. If a provider key is unset, the function returns an empty/`unconfigured` result rather than erroring — the frontend should treat that as a graceful no-op.
