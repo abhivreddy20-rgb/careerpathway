@@ -12,6 +12,9 @@ import {
   GraduationCap,
   ExternalLink,
   MapPin,
+  Target,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Text, XStack, YStack } from "tamagui";
 import {
@@ -24,6 +27,7 @@ import { useAuth } from "../lib/authContext";
 import { PROFESSION_SUGGESTIONS } from "../data/professions";
 import { trackToCipCodes } from "../data/cipCodes";
 import {
+  fetchAdmitProfile,
   fetchProfile,
   loadPathway,
   saveCompletedItems,
@@ -32,6 +36,7 @@ import {
   setActiveProfession,
   setSecondaryProfession,
   suggestSkills,
+  type AdmitProfile,
   type College,
   type CompletedMap,
   type CustomItem,
@@ -1289,6 +1294,45 @@ function CollegeRow({ college }: { college: College }) {
     college.url &&
     (college.url.startsWith("http") ? college.url : `https://${college.url}`);
 
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profile, setProfile] = useState<AdmitProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  const handleProfileToggle = async () => {
+    if (profile || profileError) {
+      setProfileOpen((o) => !o);
+      return;
+    }
+    setProfileOpen(true);
+    if (profileLoading) return;
+    setProfileLoading(true);
+    try {
+      const res = await fetchAdmitProfile({
+        college: college.name,
+        unitid: college.unitid,
+        state: college.state ?? undefined,
+      });
+      if (!res) {
+        setProfileError("No profile available right now.");
+      } else if (res.source === "unconfigured") {
+        setProfileError(
+          "Admit-profile generation isn't configured. Add OPENAI_API_KEY to the edge function secrets.",
+        );
+      } else if (res.source === "no_match") {
+        setProfileError("Couldn't generate a profile for this school.");
+      } else {
+        setProfile(res);
+      }
+    } catch (err) {
+      setProfileError(
+        err instanceof Error ? err.message : "Could not load profile.",
+      );
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   return (
     <YStack
       backgroundColor="white"
@@ -1381,6 +1425,170 @@ function CollegeRow({ college }: { college: College }) {
           </XStack>
         </YStack>
       )}
+
+      <YStack
+        gap={profileOpen ? 10 : 0}
+        paddingTop={8}
+        borderTopWidth={1}
+        borderTopColor="#f3f4f6"
+      >
+        <XStack
+          onPress={handleProfileToggle}
+          alignItems="center"
+          justifyContent="space-between"
+          paddingHorizontal={12}
+          paddingVertical={10}
+          borderRadius={8}
+          backgroundColor="#faf5ff"
+          hoverStyle={{ backgroundColor: "#f3e8ff" }}
+          cursor="pointer"
+        >
+          <XStack alignItems="center" gap={8}>
+            <Target size={14} color="#7e22ce" />
+            <Text fontSize={12} fontWeight="700" color="#6d28d9">
+              GPA & extracurriculars that boost your odds
+            </Text>
+          </XStack>
+          {profileOpen ? (
+            <ChevronUp size={14} color="#6d28d9" />
+          ) : (
+            <ChevronDown size={14} color="#6d28d9" />
+          )}
+        </XStack>
+
+        {profileOpen && profileLoading && !profile && (
+          <Text fontSize={12} color="#6b7280" paddingHorizontal={4}>
+            Generating profile…
+          </Text>
+        )}
+
+        {profileOpen && profileError && (
+          <Text fontSize={12} color="#b91c1c" paddingHorizontal={4}>
+            {profileError}
+          </Text>
+        )}
+
+        {profileOpen && profile && <AdmitProfilePanel profile={profile} />}
+      </YStack>
+    </YStack>
+  );
+}
+
+function AdmitProfilePanel({ profile }: { profile: AdmitProfile }) {
+  const stats: { label: string; value: string }[] = [];
+  if (profile.gpa_avg)
+    stats.push({ label: "Typical GPA", value: profile.gpa_avg });
+  if (profile.gpa_range)
+    stats.push({ label: "Middle 50%", value: profile.gpa_range });
+
+  return (
+    <YStack gap={10} paddingHorizontal={4}>
+      {stats.length > 0 && (
+        <XStack gap={8} flexWrap="wrap">
+          {stats.map((s) => (
+            <YStack
+              key={s.label}
+              paddingHorizontal={12}
+              paddingVertical={8}
+              borderRadius={10}
+              backgroundColor="#faf5ff"
+              borderWidth={1}
+              borderColor="#e9d5ff"
+              minWidth={120}
+            >
+              <Text
+                fontSize={10}
+                fontWeight="700"
+                color="#7e22ce"
+                letterSpacing={0.5}
+              >
+                {s.label.toUpperCase()}
+              </Text>
+              <Text fontSize={16} fontWeight="700" color="#111827">
+                {s.value}
+              </Text>
+            </YStack>
+          ))}
+        </XStack>
+      )}
+
+      {profile.course_rigor && (
+        <YStack gap={4}>
+          <Text
+            fontSize={10}
+            fontWeight="700"
+            color="#6b7280"
+            letterSpacing={0.5}
+          >
+            COURSE RIGOR
+          </Text>
+          <Text fontSize={13} color="#111827">
+            {profile.course_rigor}
+          </Text>
+        </YStack>
+      )}
+
+      {profile.top_ecs.length > 0 && (
+        <YStack gap={6}>
+          <Text
+            fontSize={10}
+            fontWeight="700"
+            color="#6b7280"
+            letterSpacing={0.5}
+          >
+            EXTRACURRICULARS THAT MOVE THE NEEDLE
+          </Text>
+          <YStack gap={6}>
+            {profile.top_ecs.map((ec) => (
+              <YStack
+                key={ec.name}
+                padding={10}
+                borderRadius={8}
+                backgroundColor="white"
+                borderWidth={1}
+                borderColor="#e5e7eb"
+              >
+                <Text fontSize={13} fontWeight="600" color="#111827">
+                  {ec.name}
+                </Text>
+                {ec.why && (
+                  <Text fontSize={12} color="#6b7280">
+                    {ec.why}
+                  </Text>
+                )}
+              </YStack>
+            ))}
+          </YStack>
+        </YStack>
+      )}
+
+      {profile.advice && (
+        <YStack
+          padding={10}
+          borderRadius={8}
+          backgroundColor="#eff6ff"
+          borderWidth={1}
+          borderColor="#bfdbfe"
+          gap={4}
+        >
+          <Text
+            fontSize={10}
+            fontWeight="700"
+            color="#1d4ed8"
+            letterSpacing={0.5}
+          >
+            ADVICE
+          </Text>
+          <Text fontSize={13} color="#111827">
+            {profile.advice}
+          </Text>
+        </YStack>
+      )}
+
+      <Text fontSize={10} color="#9ca3af">
+        {profile.disclaimer}
+        {profile.source === "cache" ? " · cached" : ""}
+      </Text>
     </YStack>
   );
 }

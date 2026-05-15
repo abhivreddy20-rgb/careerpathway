@@ -194,3 +194,30 @@ export async function suggestSkills(input: {
   if (error || !data) return null;
   return data;
 }
+
+export type AdmitProfileEC = { name: string; why: string };
+
+export type AdmitProfile = {
+  college: string;
+  unitid: number | null;
+  gpa_avg: string | null;
+  gpa_range: string | null;
+  course_rigor: string | null;
+  top_ecs: AdmitProfileEC[];
+  advice: string | null;
+  disclaimer: string;
+  source: "openai" | "cache" | "unconfigured" | "no_match";
+};
+
+export async function fetchAdmitProfile(input: {
+  college: string;
+  unitid?: number;
+  state?: string;
+}): Promise<AdmitProfile | null> {
+  const { data, error } = await supabase.functions.invoke<AdmitProfile>(
+    "admit-profile",
+    { body: input },
+  );
+  if (error || !data) return null;
+  return data;
+}
